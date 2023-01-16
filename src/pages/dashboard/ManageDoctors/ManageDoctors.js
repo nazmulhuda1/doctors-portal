@@ -1,9 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import React from 'react';
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
+import ConfimationModal from '../../Shared/ConfimationModale/ConfimationModal';
 import Loaders from '../../Shared/Loaders';
 
 const ManageDoctors = () => {
-    const { data: doctors = [], isLoading } = useQuery({
+    const [deletingDoctor, setDeletingDoctor] = useState(null)
+    // cancle modale
+    const closeModal = () => {
+        setDeletingDoctor(null)
+    }
+
+    const { data: doctors = [], isLoading, refetch } = useQuery({
         queryKey: ['doctors'],
         queryFn: async () => {
             const res = await fetch('http://localhost:5000/doctors', {
@@ -15,6 +23,23 @@ const ManageDoctors = () => {
             return data;
         }
     });
+    // delete modal
+    const handleDelete = (doctor) => {
+        fetch(`http://localhost:5000/doctors/${doctor._id}`, {
+            method: 'DELETE',
+            headers: {
+                authorization: `bearer ${localStorage.getItem('accessToken')}`
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.deletedCount > 0) {
+                    refetch()
+                    toast.success(`doctor ${doctor.name} deleted successfully`)
+                }
+            })
+
+    };
 
     // Loading
     if (isLoading) {
@@ -22,7 +47,7 @@ const ManageDoctors = () => {
     }
     return (
         <div>
-            <h1 className='text-2xl font-semibold mb-5'>Manage Doctors</h1>
+            <h1 className='text-2xl font-semibold mb-5'>Manage Doctors {doctors.length}</h1>
 
             <div className="overflow-x-auto w-full">
                 <table className="table w-full">
@@ -61,7 +86,8 @@ const ManageDoctors = () => {
                                         {doctor.specialty}
                                     </td>
                                     <th>
-                                        <button className="btn btn-ghost btn-xs">details</button>
+                                        <label onClick={() => setDeletingDoctor(doctor)} htmlFor="confirmationModal" className="btn btn-error btn-sm">delete</label>
+
                                     </th>
                                 </tr>
                             )
@@ -71,6 +97,16 @@ const ManageDoctors = () => {
                     </tbody>
                 </table>
             </div>
+            {
+                deletingDoctor &&
+                <ConfimationModal
+                    title={`Are you sure you want to delete`}
+                    message={`If you delete ${deletingDoctor.name}, it cannot be undone `}
+                    successAction={handleDelete}
+                    dataModal={deletingDoctor}
+                    closeModal={closeModal}
+                ></ConfimationModal>
+            }
         </div>
     );
 };
